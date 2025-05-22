@@ -1,10 +1,9 @@
-#include "paruco.hpp"
-
+#include <genicvbridge.hpp>
+#include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
-#include <opencv2/highgui.hpp>
 
-#include <genicvbridge.hpp>
+#include "paruco.hpp"
 
 int main(void) {
     auto capture = XVII::GenICamVideoCapture::OpenAnyCamera();
@@ -13,9 +12,10 @@ int main(void) {
 
     cv::namedWindow("detections", cv::WINDOW_KEEPRATIO);
 
-    PArUco::Params params(cv::aruco::DICT_6X6_100);
+    PArUco::Params params(cv::aruco::DICT_APRILTAG_36h11);
     params.refineParams = PArUco::RefineParams {
-        .method = PArUco::RefineParams::OTSU_ELLIPSE | PArUco::RefineParams::ELLIPSE_AMS
+        .method = PArUco::RefineParams::OTSU_ELLIPSE
+            | PArUco::RefineParams::ELLIPSE_AMS
     };
     tbb::concurrent_vector<PArUco::Detection> detections;
 
