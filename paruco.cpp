@@ -32,15 +32,18 @@ struct AssociatedBlob {
     size_t ptIdx;
 };
 
-void detect(const cv::Mat &image, tbb::concurrent_vector<Detection> &detections, const Params &params) {
-    if (params.aruco.dictionary.bytesList.empty())
-        throw std::invalid_argument("ArUco dictionary not set");
+void detect(const cv::Mat &image, const std::vector<std::vector<cv::Point2f>> &tagCorners, const std::vector<int> &tagIds, Detections &detections, const Params &params) {
+    detections.clear();
 
-    const auto arucoDetector = cv::aruco::ArucoDetector(
-        params.aruco.dictionary,
-        params.aruco.detectorParameters,
-        params.aruco.refineParameters
-    );
+    if (tagCorners.empty())
+        return;
+
+    if (tagCorners.size() != tagIds.size())
+        throw std::invalid_argument("need same number of tag corners and ids");
+
+    if (std::any_of(tagCorners.begin(), tagCorners.end(), [](const auto &v) { return v.size() != 4; }))
+        throw std::invalid_argument("can only have four tag corners per tag");
+
     const auto blobDetector = cv::SimpleBlobDetector::create(
         params.blobDetectorParameters
     );
@@ -49,15 +52,7 @@ void detect(const cv::Mat &image, tbb::concurrent_vector<Detection> &detections,
         image.size()
     };
 
-    std::vector<std::vector<cv::Point2f>> arucoCorners;
-    std::vector<int> arucoIds;
     std::vector<cv::KeyPoint> blobs;
-
-    detections.clear();
-
-    arucoDetector.detectMarkers(image, arucoCorners, arucoIds);
-    if (arucoCorners.empty())
-        return;
 
     blobDetector->detect(image, blobs);
     if (blobs.empty())
@@ -67,14 +62,14 @@ void detect(const cv::Mat &image, tbb::concurrent_vector<Detection> &detections,
         return a.pt.y == b.pt.y ? a.pt.x < a.pt.x : a.pt.y < b.pt.y;
     });
 
-    cv::parallel_for_(cv::Range(0, arucoCorners.size()), [&](const cv::Range &range) {
+    cv::parallel_for_(cv::Range(0, tagCorners.size()), [&](const cv::Range &range) {
         cv::Mat blobNeighborhood;
         std::unordered_map<size_t, AssociatedBlob> usedBlobs;
 
         for (int i = range.start; i < range.end; ++i) {
             Detection dect = {
-                .arucoId = arucoIds[i],
-                .arucoCorners = std::move(arucoCorners[i]),
+                .arucoId = tagIds[i],
+                .arucoCorners = std::move(tagCorners[i]),
                 .circleCenters = {}
             };
 
@@ -174,13 +169,26 @@ void detect(const cv::Mat &image, tbb::concurrent_vector<Detection> &detections,
             detections.push_back(std::move(dect));
         }
     });
+}
 
-#if 0
-    cv::namedWindow("blobs", cv::WINDOW_KEEPRATIO);
-    cv::Mat drawn;
-    cv::drawKeypoints(image, blobs, drawn, cv::Scalar(0, 255, 0), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-    cv::imshow("blobs", drawn);
-#endif
+void detect(const cv::Mat &image, Detections &detections, const Params &params) {
+    if (params.aruco.dictionary.bytesList.empty())
+        throw std::invalid_argument("ArUco dictionary not set");
+
+    const auto arucoDetector = cv::aruco::ArucoDetector(
+        params.aruco.dictionary,
+        params.aruco.detectorParameters,
+        params.aruco.refineParameters
+    );
+
+    std::vector<std::vector<cv::Point2f>> arucoCorners;
+    std::vector<int> arucoIds;
+
+    arucoDetector.detectMarkers(image, arucoCorners, arucoIds);
+    if (arucoCorners.empty())
+        return;
+    
+    detect(image, arucoCorners, arucoIds, detections, params);
 }
 
 #define HEX(rgb) cv::Scalar((rgb & 0xff),((rgb >> 8) & 0xff),((rgb >> 16) & 0xff))

@@ -53,6 +53,9 @@ using Detections = tbb::concurrent_vector<Detection>;
 
 void detect(const cv::Mat &image, Detections &detections, const Params &params = Params {});
 
+/* for tags with other types of detectors, e.g. apriltag library */
+void detect(const cv::Mat &image, const std::vector<std::vector<cv::Point2f>> &tagCorners, const std::vector<int> &tagIds, Detections &detections, const Params &params);
+
 void draw(cv::Mat &image, const Detections &detections, float drawScale = 1.0f, int thickness = 1);
 
 }
