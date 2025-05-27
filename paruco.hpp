@@ -5,6 +5,7 @@
 #include <opencv2/aruco.hpp>
 #include <opencv2/features2d.hpp>
 #include <optional>
+#include <variant>
 
 namespace PArUco {
 
@@ -15,14 +16,16 @@ struct Detection {
 };
 
 struct RefineParams {
-    enum Method {
-        OTSU_ELLIPSE = (1 << 0),
-        ELLIPSE_AMS = (1 << 1),
-        ELLIPSE_DIRECT = (1 << 2)
+    struct OtsuEllipse {
+        enum class EllipseFitVariant { ELLIPSE_AMS, ELLIPSE_DIRECT };
+        std::optional<EllipseFitVariant> variant;
+    };
+    struct DualConic {
+        float gradientThreshold = 0.75f;
     };
 
     float blobBboxScale = 2.f;
-    int method = Method::OTSU_ELLIPSE;
+    std::variant<OtsuEllipse, DualConic> method;
 };
 
 struct Params {
@@ -71,6 +74,7 @@ void detect(
 void draw(
     cv::Mat& image,
     const Detections& detections,
+    bool numbers = true,
     float drawScale = 1.0f,
     int thickness = 1
 );

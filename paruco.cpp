@@ -1,9 +1,11 @@
 #include "paruco.hpp"
 
+#include <cfloat>
 #include <numeric>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <unordered_map>
+#include <variant>
 
 namespace PArUco {
 
@@ -30,6 +32,63 @@ static void tagCircleEstimates(
         for (int j : {1, 2})
             out[cornerIdxs[i] + j] = j / 3.f * (b - a) + a;
     }
+}
+
+// Fitting Ellipse Based on the Dual Conic Model
+// C. Zhao, M.L. Fu, and J.T. Cheng
+// and
+// Precise ellipse estimation without contour point extraction
+// J.-N. Ouellet and P. Hébert
+static std::optional<cv::Point2f> fitEllipseDualConic(
+    const cv::Mat& src,
+    const cv::Point& offset,
+    float gradientThreshold
+) {
+    using Vec5f = cv::Vec<float, 5>;
+
+    cv::Mat1s dx, dy;
+    cv::Mat1f gradMagnitude;
+    auto sum_KK = cv::Matx<float, 5, 5>::zeros();
+    auto sum_KZ2 = Vec5f::zeros();
+
+    cv::spatialGradient(src, dx, dy);
+
+    {
+        cv::Mat1f gradMagnitude_(src.size());
+        for (int row = 0; row < src.rows; ++row) {
+            for (int col = 0; col < src.cols; ++col) {
+                const cv::Vec2i grad {dx(row, col), dy(row, col)};
+                gradMagnitude_(row, col) = std::sqrt(grad.dot(grad));
+            }
+        }
+        cv::normalize(gradMagnitude_, gradMagnitude, 0.f, 1.f, cv::NORM_MINMAX);
+    }
+
+    for (int row = 0; row < src.rows; ++row) {
+        for (int col = 0; col < src.cols; ++col) {
+            if (gradMagnitude(row, col) < gradientThreshold)
+                continue;
+
+            const cv::Vec2f p {float(col), float(row)};
+            const cv::Vec2f dp {float(dx(row, col)), float(dy(row, col))};
+
+            const auto& [X, Y] = dp.val;
+            const float Z = (dp.t() * p).val[0];
+
+            const Vec5f Kprime {X * X, X * Y, Y * Y, X * Z, Y * Z};
+            sum_KK += Kprime * Kprime.t();
+            sum_KZ2 += Kprime * Z * Z;
+        }
+    }
+
+    bool ok;
+    const auto [A, B, C, D, E] =
+        (sum_KK.inv(cv::DECOMP_SVD, &ok) * sum_KZ2).val;
+
+    if (!ok)
+        return std::nullopt;
+
+    return cv::Point2f {0.5f * D + offset.x, 0.5f * E + offset.y};
 }
 
 struct AssociatedBlob {
@@ -168,7 +227,8 @@ void detect(
                             continue;
                         }
 
-                        if (refineParams.method & RefineParams::OTSU_ELLIPSE) {
+                        if (std::holds_alternative<RefineParams::OtsuEllipse>(refineParams.method)) {
+                            const auto& params = std::get<RefineParams::OtsuEllipse>(refineParams.method);
                             std::vector<std::vector<cv::Point>> contours;
 
                             cv::threshold(
@@ -187,20 +247,35 @@ void detect(
                             );
 
                             if (contours.size() == 1) {
-                                cv::RotatedRect fit;
-                                if (refineParams.method
-                                    & RefineParams::ELLIPSE_AMS) {
-                                    fit = cv::fitEllipseAMS(contours[0]);
-                                } else if (refineParams.method
-                                           & RefineParams::ELLIPSE_DIRECT) {
-                                    fit = cv::fitEllipseDirect(contours[0]);
+                                if (params.variant.has_value()) {
+                                    switch (params.variant.value()) {
+                                        case RefineParams::OtsuEllipse::
+                                            EllipseFitVariant::ELLIPSE_AMS:
+                                            center =
+                                                cv::fitEllipseAMS(contours[0])
+                                                    .center;
+                                            break;
+                                        case RefineParams::OtsuEllipse::
+                                            EllipseFitVariant::ELLIPSE_DIRECT:
+                                            center =
+                                                cv::fitEllipseDirect(contours[0]
+                                                )
+                                                    .center;
+                                            break;
+                                    }
                                 } else {
-                                    fit = cv::fitEllipse(contours[0]);
+                                    center = cv::fitEllipse(contours[0]).center;
                                 }
-                                center = fit.center;
                             } else {
                                 center = std::nullopt;
                             }
+                        } else if (std::holds_alternative<RefineParams::DualConic>(refineParams.method)) {
+                            const auto& params = std::get<RefineParams::DualConic>(refineParams.method);
+                            center = fitEllipseDualConic(
+                                image(blobNeighborhoodRoi),
+                                ul,
+                                params.gradientThreshold
+                            );
                         }
                     } /* for dect.circleCenters */
                 }
@@ -229,8 +304,6 @@ void detect(
     std::vector<int> arucoIds;
 
     arucoDetector.detectMarkers(image, arucoCorners, arucoIds);
-    if (arucoCorners.empty())
-        return;
 
     detect(image, arucoCorners, arucoIds, detections, params);
 }
@@ -241,6 +314,7 @@ void detect(
 void draw(
     cv::Mat& image,
     const tbb::concurrent_vector<Detection>& detections,
+    bool numbers,
     float drawScale,
     int thickness
 ) {
@@ -292,15 +366,17 @@ void draw(
                 20 * drawScale,
                 thickness
             );
-            cv::putText(
-                image,
-                std::to_string(i),
-                *pos,
-                cv::FONT_HERSHEY_SIMPLEX,
-                drawScale * 0.75,
-                colors[colorIdx],
-                thickness
-            );
+            if (numbers) {
+                cv::putText(
+                    image,
+                    std::to_string(i),
+                    *pos,
+                    cv::FONT_HERSHEY_SIMPLEX,
+                    drawScale * 0.75,
+                    colors[colorIdx],
+                    thickness
+                );
+            }
         }
     }
 }

@@ -14,8 +14,7 @@ int main(void) {
 
     PArUco::Params params(cv::aruco::DICT_APRILTAG_36h11);
     params.refineParams = PArUco::RefineParams {
-        .method = PArUco::RefineParams::OTSU_ELLIPSE
-            | PArUco::RefineParams::ELLIPSE_AMS
+        .method = PArUco::RefineParams::DualConic { 0.4f }
     };
     tbb::concurrent_vector<PArUco::Detection> detections;
 
@@ -26,7 +25,7 @@ int main(void) {
         PArUco::detect(image, detections, params);
 
         cv::cvtColor(image, color, cv::COLOR_GRAY2BGR);
-        PArUco::draw(color, detections, 0.9f, 2);
+        PArUco::draw(color, detections, false, 0.9f, 2);
 
         cv::imshow("detections", color);
     }
