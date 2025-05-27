@@ -20,6 +20,7 @@ struct RefineParams {
         enum class EllipseFitVariant { ELLIPSE_AMS, ELLIPSE_DIRECT };
         std::optional<EllipseFitVariant> variant;
     };
+
     struct DualConic {
         float gradientThreshold = 0.75f;
     };
@@ -55,6 +56,12 @@ struct Params {
 };
 
 using Detections = tbb::concurrent_vector<Detection>;
+
+std::optional<cv::Point2f> fitEllipseDualConic(
+    const cv::Mat& src,
+    const cv::Point& offset,
+    float gradientThreshold = 0.5f
+);
 
 void detect(
     const cv::Mat& image,

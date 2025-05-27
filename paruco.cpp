@@ -38,7 +38,7 @@ static void tagCircleEstimates(
 // and
 // Precise ellipse estimation without contour point extraction
 // J.-N. Ouellet and P. Hébert
-static std::optional<cv::Point2f> fitEllipseDualConic(
+std::optional<cv::Point2f> fitEllipseDualConic(
     const cv::Mat& src,
     const cv::Point& offset,
     float gradientThreshold
@@ -143,7 +143,7 @@ void detect(
             for (int i = range.start; i < range.end; ++i) {
                 Detection dect = {
                     .arucoId = tagIds[i],
-                    .arucoCorners = std::move(tagCorners[i]),
+                    .arucoCorners = tagCorners[i],
                     .circleCenters = {}
                 };
 
