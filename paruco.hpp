@@ -25,7 +25,7 @@ struct RefineParams {
     };
 
     float blobBboxScale = 2.f;
-    std::variant<OtsuEllipse, DualConic> method;
+    std::variant<OtsuEllipse, DualConic> method = DualConic {};
 };
 
 struct Params {

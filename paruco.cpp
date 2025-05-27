@@ -1,6 +1,5 @@
 #include "paruco.hpp"
 
-#include <cfloat>
 #include <numeric>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
