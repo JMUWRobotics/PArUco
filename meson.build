@@ -12,6 +12,13 @@ libs = both_libraries(
     version: meson.project_version()
 )
 
+executable(
+    'paruco-cli',
+    'paruco-cli.cpp',
+    link_with: libs.get_shared_lib(),
+    dependencies: dependencies + dependency('cxxopts', version: '>=3.2.0')
+)
+
 genicvbridge = dependency('genicvbridge', required: false, not_found_message: 'genicvbridge not available. not building paruco-demo')
 if genicvbridge.found()
     executable(

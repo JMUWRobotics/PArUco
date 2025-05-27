@@ -250,16 +250,11 @@ void detect(
                                     switch (params.variant.value()) {
                                         case RefineParams::OtsuEllipse::
                                             EllipseFitVariant::ELLIPSE_AMS:
-                                            center =
-                                                cv::fitEllipseAMS(contours[0])
-                                                    .center;
+                                            center = cv::fitEllipseAMS(contours[0]).center;
                                             break;
                                         case RefineParams::OtsuEllipse::
                                             EllipseFitVariant::ELLIPSE_DIRECT:
-                                            center =
-                                                cv::fitEllipseDirect(contours[0]
-                                                )
-                                                    .center;
+                                            center = cv::fitEllipseDirect(contours[0]).center;
                                             break;
                                     }
                                 } else {
