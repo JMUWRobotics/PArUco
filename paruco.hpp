@@ -17,14 +17,20 @@ struct Detection {
 
 struct RefineParams {
     struct OtsuEllipse {
+        // passthrough for OpenCV functions
+        //  fitEllipseAMS, fitEllipseDirect
+        // otherwise, defaults to fitEllipse.
         enum class EllipseFitVariant { ELLIPSE_AMS, ELLIPSE_DIRECT };
         std::optional<EllipseFitVariant> variant;
     };
 
     struct DualConic {
+        // only include pixels with a gradient that is within
+        // the upper (1 - gradientThreshold) * 100%
         float gradientThreshold = 0.75f;
     };
 
+    // window size scale around initial blob estimate
     float blobBboxScale = 2.f;
     std::variant<OtsuEllipse, DualConic> method = DualConic {};
 };
@@ -38,12 +44,18 @@ struct Params {
 
     cv::SimpleBlobDetector::Params blobDetectorParameters = {};
 
+    // distance from tag edge to a circle, over tag size
     float tagExpandScale = 0.5f;
-
+    
+    // maximum distance in pixels between blob center and
+    // estimated (from tagExpandScale) blob center, to alleviate
+    // blob-circle misidentification. Set to std::nullopt to disable.
     std::optional<float> maxIdentificationDistancePixels = 15.f;
+
     std::optional<RefineParams> refineParams = RefineParams {};
 
     inline Params() {
+        // default to black circles on white background
         blobDetectorParameters.filterByColor = true;
         blobDetectorParameters.blobColor = 0;
     }
