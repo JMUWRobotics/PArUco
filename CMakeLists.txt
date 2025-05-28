@@ -10,4 +10,4 @@ find_package(TBB REQUIRED)
 
 add_library(paruco STATIC paruco.cpp)
 target_include_directories(paruco INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(paruco PUBLIC ${OpenCV_LIBS} TBB::tbb)
+target_link_libraries(paruco PUBLIC ${OpenCV_LIBS} ${TBB_LIBS})

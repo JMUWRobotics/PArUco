@@ -143,12 +143,12 @@ void detect(
             for (int i = range.start; i < range.end; ++i) {
                 Detection dect = {
                     .tagId = tagIds[i],
-                    .arucoCorners = tagCorners[i],
+                    .tagCorners = tagCorners[i],
                     .circleCenters = {}
                 };
 
                 tagCircleEstimates(
-                    dect.arucoCorners,
+                    dect.tagCorners,
                     params.tagExpandScale,
                     dect.circleCenters
                 );
@@ -323,11 +323,11 @@ void draw(
 
     for (const auto& d : detections) {
         const size_t colorIdx = d.tagId % colors.size();
-        for (size_t i = 0; i < d.arucoCorners.size(); ++i) {
+        for (size_t i = 0; i < d.tagCorners.size(); ++i) {
             cv::line(
                 image,
-                d.arucoCorners[i],
-                d.arucoCorners[(i + 1) % d.arucoCorners.size()],
+                d.tagCorners[i],
+                d.tagCorners[(i + 1) % d.tagCorners.size()],
                 colors[colorIdx],
                 thickness
             );
@@ -337,8 +337,8 @@ void draw(
             std::to_string(d.tagId),
             0.25f
                 * std::accumulate(
-                    d.arucoCorners.begin(),
-                    d.arucoCorners.end(),
+                    d.tagCorners.begin(),
+                    d.tagCorners.end(),
                     cv::Point2f(0, 0)
                 ),
             cv::FONT_HERSHEY_SIMPLEX,

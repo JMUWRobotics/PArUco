@@ -11,7 +11,7 @@ namespace PArUco {
 
 struct Detection {
     int tagId;
-    std::vector<cv::Point2f> arucoCorners;
+    std::vector<cv::Point2f> tagCorners;
     std::array<std::optional<cv::Point2f>, 12> circleCenters;
 };
 
