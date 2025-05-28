@@ -142,7 +142,7 @@ void detect(
 
             for (int i = range.start; i < range.end; ++i) {
                 Detection dect = {
-                    .arucoId = tagIds[i],
+                    .tagId = tagIds[i],
                     .arucoCorners = tagCorners[i],
                     .circleCenters = {}
                 };
@@ -322,7 +322,7 @@ void draw(
     };
 
     for (const auto& d : detections) {
-        const size_t colorIdx = d.arucoId % colors.size();
+        const size_t colorIdx = d.tagId % colors.size();
         for (size_t i = 0; i < d.arucoCorners.size(); ++i) {
             cv::line(
                 image,
@@ -334,7 +334,7 @@ void draw(
         }
         cv::putText(
             image,
-            std::to_string(d.arucoId),
+            std::to_string(d.tagId),
             0.25f
                 * std::accumulate(
                     d.arucoCorners.begin(),

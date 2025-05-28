@@ -1,10 +1,11 @@
 #include <cxxopts.hpp>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
-#include <opencv2/highgui.hpp>
 #include <variant>
-#include <iostream>
-#include <fstream>
 
 #include "paruco.hpp"
 
@@ -50,7 +51,8 @@ int main(int argc, const char* const* argv) {
         ("refine-bbox-scale", "bounding box scale around circle estimate for refinement", cxxopts::value<float>())
         ("refine-method", "method of refinement one of { otsu, otsu_ams, otsu_direct, dual_conic }", cxxopts::value<std::string>())
         ("dual-conic-gradient-threshold", "gradient threshold for dual conic refinement method", cxxopts::value<float>())
-        ("dictionary", "cv::aruco::dictionary for tag detection", cxxopts::value<std::string>()->default_value("DICT_6X6_100"));
+        ("dictionary", "cv::aruco::dictionary for tag detection", cxxopts::value<std::string>()->default_value("DICT_6X6_100"))
+        ("compat", "output coordinates w.r.t. the image center and inverted y-axis and pixel origin in top left of pixel");
 
     options.parse_positional({"input", "output"});
     options.positional_help("input [output]");
@@ -95,18 +97,26 @@ int main(int argc, const char* const* argv) {
 
     std::cerr << detections.size() << " detections\n";
 
-    std::ofstream outfile(args["output"].as<std::string>());
-    for (const auto &d : detections) {
-        outfile << '#' << d.arucoId << " |";
-        for (size_t i = 0; i < d.circleCenters.size(); ++i) {
-            outfile << "\t(" << i << ')';
-            if (d.circleCenters[i].has_value()) {
-                outfile << d.circleCenters[i].value();
-            } else {
-                outfile << "[none]\t";
+    {
+        std::ofstream outfile(args["output"].as<std::string>());
+        for (const auto& d : detections) {
+            for (size_t i = 0; i < d.circleCenters.size(); ++i) {
+                if (!d.circleCenters[i].has_value()) {
+                    continue;
+                }
+
+                cv::Point2f p = *d.circleCenters[i];
+                if (args.count("compat")) {
+                    p.x -= input.cols / 2.f - 0.5f;
+                    p.y -= input.rows / 2.f - 0.5f;
+                    p.y = -p.y;
+                }
+
+                outfile << 'T' << std::setfill('0') << std::setw(3) << d.tagId
+                        << 'C' << std::setw(2) << i << std::setw(0) 
+                        << '\t' << p.x << '\t' << p.y << '\n';
             }
         }
-        outfile << '\n';
     }
 
     if (args.count("draw")) {

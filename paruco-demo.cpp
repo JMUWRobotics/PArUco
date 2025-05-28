@@ -12,7 +12,7 @@ int main(void) {
 
     cv::namedWindow("detections", cv::WINDOW_KEEPRATIO);
 
-    PArUco::Params params(cv::aruco::DICT_APRILTAG_36h11);
+    PArUco::Params params(cv::aruco::DICT_6X6_100);
     params.refineParams = PArUco::RefineParams {
         .method = PArUco::RefineParams::DualConic { 0.4f }
     };
